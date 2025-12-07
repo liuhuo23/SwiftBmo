@@ -33,6 +33,7 @@
 		845B5F1B2EE5FD6F004431BB /* generate_appicon_placeholders.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = generate_appicon_placeholders.sh; sourceTree = "<group>"; };
 		845B5F1C2EE5FD6F004431BB /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		845B5F492EE606F2004431BB /* build-and-dmg.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = "build-and-dmg.yml"; sourceTree = "<group>"; };
+		845B5F4D2EE60C1E004431BB /* generate_secrets.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = generate_secrets.sh; sourceTree = "<group>"; };
 		84A9C2B72EE5BFF600BB74BB /* SwiftBmo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftBmo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		84A9C2C92EE5BFF800BB74BB /* SwiftBmoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftBmoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		84A9C2D32EE5BFF800BB74BB /* SwiftBmoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftBmoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -108,6 +109,7 @@
 		845B5F1D2EE5FD6F004431BB /* scripts */ = {
 			isa = PBXGroup;
 			children = (
+				845B5F4D2EE60C1E004431BB /* generate_secrets.sh */,
 				845B5F1A2EE5FD6F004431BB /* build_and_dmg.sh */,
 				845B5F1B2EE5FD6F004431BB /* generate_appicon_placeholders.sh */,
 				845B5F1C2EE5FD6F004431BB /* README.md */,

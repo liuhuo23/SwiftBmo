@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		845B5F4C2EE606F2004431BB /* build-and-dmg.yml in Resources */ = {isa = PBXBuildFile; fileRef = 845B5F492EE606F2004431BB /* build-and-dmg.yml */; };
 		84A9C2EF2EE5C1F500BB74BB /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 84A9C2EE2EE5C1EC00BB74BB /* README.md */; };
 /* End PBXBuildFile section */
 
@@ -31,6 +32,7 @@
 		845B5F1A2EE5FD6F004431BB /* build_and_dmg.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build_and_dmg.sh; sourceTree = "<group>"; };
 		845B5F1B2EE5FD6F004431BB /* generate_appicon_placeholders.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = generate_appicon_placeholders.sh; sourceTree = "<group>"; };
 		845B5F1C2EE5FD6F004431BB /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		845B5F492EE606F2004431BB /* build-and-dmg.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = "build-and-dmg.yml"; sourceTree = "<group>"; };
 		84A9C2B72EE5BFF600BB74BB /* SwiftBmo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftBmo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		84A9C2C92EE5BFF800BB74BB /* SwiftBmoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftBmoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		84A9C2D32EE5BFF800BB74BB /* SwiftBmoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftBmoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -113,6 +115,22 @@
 			path = scripts;
 			sourceTree = "<group>";
 		};
+		845B5F4A2EE606F2004431BB /* workflows */ = {
+			isa = PBXGroup;
+			children = (
+				845B5F492EE606F2004431BB /* build-and-dmg.yml */,
+			);
+			path = workflows;
+			sourceTree = "<group>";
+		};
+		845B5F4B2EE606F2004431BB /* .github */ = {
+			isa = PBXGroup;
+			children = (
+				845B5F4A2EE606F2004431BB /* workflows */,
+			);
+			path = .github;
+			sourceTree = "<group>";
+		};
 		84A9C2AE2EE5BFF600BB74BB = {
 			isa = PBXGroup;
 			children = (
@@ -122,6 +140,7 @@
 				84A9C2D62EE5BFF800BB74BB /* SwiftBmoUITests */,
 				84A9C2B82EE5BFF600BB74BB /* Products */,
 				845B5F1D2EE5FD6F004431BB /* scripts */,
+				845B5F4B2EE606F2004431BB /* .github */,
 			);
 			sourceTree = "<group>";
 		};
@@ -255,6 +274,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				845B5F4C2EE606F2004431BB /* build-and-dmg.yml in Resources */,
 				84A9C2EF2EE5C1F500BB74BB /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

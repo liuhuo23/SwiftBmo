@@ -38,6 +38,7 @@
 		845B5F032EE5CCD2004431BB /* Exceptions for "SwiftBmo" folder in "SwiftBmoTests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Resource/bmo.png,
 				Resource/ding.mp3,
 			);
 			target = 84A9C2C82EE5BFF800BB74BB /* SwiftBmoTests */;
@@ -45,6 +46,7 @@
 		845B5F042EE5CCD2004431BB /* Exceptions for "SwiftBmo" folder in "SwiftBmoUITests" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Resource/bmo.png,
 				Resource/ding.mp3,
 			);
 			target = 84A9C2D22EE5BFF800BB74BB /* SwiftBmoUITests */;

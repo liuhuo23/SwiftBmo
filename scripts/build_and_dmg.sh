@@ -149,21 +149,63 @@ STAGING="$TMPDIR/Volume"
 mkdir -p "$STAGING"
 cp -R "$APP_PATH" "$STAGING/"
 
-# Create DMG
-VOLNAME="$APP_NAME"
-OUT_DMG="$OUTPUT_DIR/${APP_NAME}.dmg"
+# Add Applications symlink (shortcut) so users can drag the app to /Applications
+ln -s /Applications "$STAGING/Applications" || true
 
-# Remove existing output
-if [[ -f "$OUT_DMG" ]]; then
-  echo "移除已存在的 DMG: $OUT_DMG"
-  rm -f "$OUT_DMG"
+# Try to extract App icon from the app bundle to use as DMG icon
+APP_ICON_SRC=""
+if [[ -f "$APP_PATH/Contents/Resources/AppIcon.icns" ]]; then
+  APP_ICON_SRC="$APP_PATH/Contents/Resources/AppIcon.icns"
+elif [[ -f "$APP_PATH/Contents/Resources/AppIcon.icns" ]]; then
+  APP_ICON_SRC="$APP_PATH/Contents/Resources/AppIcon.icns"
+fi
+if [[ -n "$APP_ICON_SRC" ]]; then
+  mkdir -p "$STAGING/.background"
+  cp "$APP_ICON_SRC" "$STAGING/.VolumeIcon.icns" || true
 fi
 
-echo "开始生成 DMG -> $OUT_DMG"
-run_cmd "hdiutil create -volname '$VOLNAME' -srcfolder '$STAGING' -ov -format UDZO '$OUT_DMG'"
+# Create a read-write DMG from the staging folder (so it contains all files already)
+VOLNAME="$APP_NAME"
+TEMP_DMG="$OUTPUT_DIR/${APP_NAME}-temp.dmg"
+FINAL_DMG="$OUTPUT_DIR/${APP_NAME}.dmg"
+
+# Remove existing
+if [[ -f "$TEMP_DMG" ]]; then rm -f "$TEMP_DMG"; fi
+if [[ -f "$FINAL_DMG" ]]; then rm -f "$FINAL_DMG"; fi
+
+# Create the temp DMG containing the staged files
+run_cmd "hdiutil create -volname '$VOLNAME' -srcfolder '$STAGING' -ov -format UDRW '$TEMP_DMG'"
+
+# Mount the temp DMG to set metadata (icon flags)
+MOUNT_POINT="$TMPDIR/mnt"
+mkdir -p "$MOUNT_POINT"
+run_cmd "hdiutil attach -readwrite -noverify -noautoopen '$TEMP_DMG' -mountpoint '$MOUNT_POINT'"
+
+# If we have a volume icon, move it to root and set hidden, then set the volume to use custom icon
+if [[ -f "$MOUNT_POINT/.VolumeIcon.icns" ]]; then
+  # Ensure hidden
+  run_cmd "SetFile -a V '$MOUNT_POINT/.VolumeIcon.icns' || true"
+  # Set the volume to use custom icon
+  run_cmd "SetFile -a C '$MOUNT_POINT' || true"
+fi
+
+# Optionally set .background folder hidden so Finder doesn't show it
+if [[ -d "$MOUNT_POINT/.background" ]]; then
+  run_cmd "SetFile -a V '$MOUNT_POINT/.background' || true"
+fi
+
+# Eject the DMG
+run_cmd "hdiutil detach '$MOUNT_POINT' -quiet"
+
+# Convert to compressed UDZO
+run_cmd "hdiutil convert '$TEMP_DMG' -format UDZO -imagekey zlib-level=9 -o '$FINAL_DMG'"
+
+# Cleanup
+rm -f "$TEMP_DMG"
+rm -rf "$TMPDIR"
 
 if [[ $DRY_RUN -eq 0 ]]; then
-  echo "DMG 已生成: $OUT_DMG"
+  echo "DMG 已生成: $FINAL_DMG"
 fi
 
 # Cleanup

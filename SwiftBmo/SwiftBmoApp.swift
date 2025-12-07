@@ -74,7 +74,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // --- Size and position ---
         // Customize width/height here
         let width: CGFloat = 400
-        let height: CGFloat = 600
+        let height: CGFloat = 620
 
         if let screen = NSScreen.main {
             // Position: center of the main visible screen by default

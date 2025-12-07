@@ -28,6 +28,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		845B5F1A2EE5FD6F004431BB /* build_and_dmg.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build_and_dmg.sh; sourceTree = "<group>"; };
+		845B5F1B2EE5FD6F004431BB /* generate_appicon_placeholders.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = generate_appicon_placeholders.sh; sourceTree = "<group>"; };
+		845B5F1C2EE5FD6F004431BB /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		84A9C2B72EE5BFF600BB74BB /* SwiftBmo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwiftBmo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		84A9C2C92EE5BFF800BB74BB /* SwiftBmoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftBmoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		84A9C2D32EE5BFF800BB74BB /* SwiftBmoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SwiftBmoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -100,6 +103,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		845B5F1D2EE5FD6F004431BB /* scripts */ = {
+			isa = PBXGroup;
+			children = (
+				845B5F1A2EE5FD6F004431BB /* build_and_dmg.sh */,
+				845B5F1B2EE5FD6F004431BB /* generate_appicon_placeholders.sh */,
+				845B5F1C2EE5FD6F004431BB /* README.md */,
+			);
+			path = scripts;
+			sourceTree = "<group>";
+		};
 		84A9C2AE2EE5BFF600BB74BB = {
 			isa = PBXGroup;
 			children = (
@@ -108,6 +121,7 @@
 				84A9C2CC2EE5BFF800BB74BB /* SwiftBmoTests */,
 				84A9C2D62EE5BFF800BB74BB /* SwiftBmoUITests */,
 				84A9C2B82EE5BFF600BB74BB /* Products */,
+				845B5F1D2EE5FD6F004431BB /* scripts */,
 			);
 			sourceTree = "<group>";
 		};

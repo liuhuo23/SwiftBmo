@@ -180,9 +180,10 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Remove temporary keychain (if created)
-        if: ${{ env.KEYCHAIN_NAME != '' }}
         run: |
           set -euo pipefail
+          # KEYCHAIN_NAME is set via GITHUB_ENV at runtime by the import step.
+          # Evaluate at runtime in the shell rather than in a workflow expression.
           if [[ -n "${KEYCHAIN_NAME:-}" ]]; then
             echo "Deleting temporary keychain: $KEYCHAIN_NAME"
             # ensure keychain is unlocked to allow deletion

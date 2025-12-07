@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AVFoundation
+import UserNotifications
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -15,19 +16,30 @@ import AppKit
 #endif
 
 struct TimerView: View {
-    @State private var timer: Timer?
-    @State private var isRunning = false
-    @State private var totalTimer = 60; // 秒数
-    @State private var currentTimer = 0; // 当前秒数
-    @State private var audioPlayer: AVAudioPlayer?
+    // Use the view model to hold timer/audio logic
+    @StateObject private var viewModel = TimerViewModel()
+
+    // Local preset duration (seconds) to mirror the previous `totalTimer` behavior
+    @State private var presetDuration: Int = 60
+
+    // Text backing for manual duration input
+    @State private var durationText: String = "60"
+
+    // Show completion alert when timer finishes
+    @State private var showCompleteAlert: Bool = false
+
+    // Toggle for system notifications
+    @State private var notificationsEnabled: Bool = false
+
     var progress: Double {
-        if totalTimer == 0 {
-            return 0.0
-        }
-        return Double(totalTimer - currentTimer) / Double(totalTimer)
+        viewModel.progress
     }
+
+    // Common presets the user can tap quickly
+    private let presets: [Int] = [30, 60, 120, 300]
+
     var body: some View{
-        VStack{
+        VStack(spacing: 18){
             CircularProgressView(progress: progress){
                 // Modern timer label: gradient, monospaced digits, rounded background
                 ZStack {
@@ -43,7 +55,7 @@ struct TimerView: View {
 #endif
 
                     // Gradient masked text for a modern look
-                    Text(int2timer(currentTimer))
+                    Text(int2timer(Int(viewModel.remaining)))
                         .font(.system(size: 44, weight: .black, design: .rounded))
                         .monospacedDigit()
                         .padding(.vertical, 10)
@@ -51,37 +63,106 @@ struct TimerView: View {
                         .overlay(
                             LinearGradient(gradient: Gradient(colors: [Color.green, Color.blue]), startPoint: .topLeading, endPoint: .bottomTrailing)
                                 .mask(
-                                    Text(int2timer(currentTimer))
+                                    Text(int2timer(Int(viewModel.remaining)))
                                         .font(.system(size: 44, weight: .black, design: .rounded))
                                         .monospacedDigit()
                                 )
                         )
-                        .animation(.easeInOut(duration: 0.18), value: currentTimer)
+                        .animation(.easeInOut(duration: 0.18), value: viewModel.remaining)
                 }
             }
-           
+
+            // Preset selection row
+            HStack(spacing: 12) {
+                ForEach(presets, id: \.self) { val in
+                    Button {
+                        presetDuration = val
+                        durationText = "\(val)"
+                        // Show the selected preset immediately in UI by starting then pausing
+                        viewModel.reset()
+                        viewModel.start(duration: TimeInterval(val))
+                        viewModel.pause()
+                    } label: {
+                        Text("\(val)s")
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 12)
+                            .background(RoundedRectangle(cornerRadius: 10).fill(presetDuration == val ? Color.accentColor : Color.gray.opacity(0.16)))
+                            .foregroundColor(presetDuration == val ? Color.white : Color.primary)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+
+            // Manual duration input (seconds) with a small stepper
+            HStack(spacing: 8) {
+                Text("自定义秒数:")
+                    .font(.subheadline)
+                TextField("秒数", text: $durationText, onCommit: applyDurationText)
+                    .frame(width: 80)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .multilineTextAlignment(.trailing)
+                Stepper(value: Binding(get: { presetDuration }, set: { newVal in
+                    presetDuration = newVal
+                    durationText = "\(newVal)"
+                    // Update display immediately
+                    viewModel.reset()
+                    viewModel.start(duration: TimeInterval(newVal))
+                    viewModel.pause()
+                }), in: 1...36000, step: 1) {
+                    EmptyView()
+                }
+                .labelsHidden()
+            }
+
+            // Sound + notification toggles row
+            HStack(spacing: 12) {
+                Toggle(isOn: $viewModel.soundEnabled) {
+                    Label("声音", systemImage: viewModel.soundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                }
+                .toggleStyle(.button)
+
+                Toggle(isOn: $notificationsEnabled) {
+                    Label("通知", systemImage: notificationsEnabled ? "bell.fill" : "bell.slash")
+                }
+                .toggleStyle(.button)
+                .onChange(of: notificationsEnabled) { newVal, _oldVal in
+                    if newVal {
+                        requestNotificationPermission()
+                    }
+                }
+            }
+
             HStack{
                 HStack(spacing: 20) {
                     // Start / Pause icon button
                     Button {
-                        if isRunning {
-                            pauseTimer()
-                        } else {
-                            startTimer()
+                        switch viewModel.state {
+                        case .running:
+                            viewModel.pause()
+                        case .paused:
+                            viewModel.resume()
+                        default:
+                            // idle or finished -> start with presetDuration
+                            viewModel.start(duration: TimeInterval(presetDuration))
                         }
                     } label: {
-                        Image(systemName: isRunning ? "pause.fill" : "play.fill")
+                        Image(systemName: viewModel.state == .running ? "pause.fill" : "play.fill")
                             .font(.title)
                             .frame(width: 52, height: 52)
                             .foregroundColor(.white)
-                            .background(Circle().fill(isRunning ? Color.orange : Color.green))
+                            .background(Circle().fill(viewModel.state == .running ? Color.orange : Color.green))
                     }
-                    .accessibilityLabel(isRunning ? "暂停" : "开始")
+                    .accessibilityLabel(viewModel.state == .running ? "暂停" : "开始")
                     .buttonStyle(PlainButtonStyle())
 
                     // Reset icon button
                     Button {
-                        resetTimer()
+                        // Reset to preset: stop timer and set remaining to preset by starting then pausing
+                        viewModel.reset()
+                        // Start then pause to set remaining to presetDuration without running
+                        viewModel.start(duration: TimeInterval(presetDuration))
+                        viewModel.pause()
                     } label: {
                         Image(systemName: "arrow.counterclockwise")
                             .font(.title2)
@@ -94,24 +175,75 @@ struct TimerView: View {
                 }
              }
         }
+        .padding()
         .onAppear{
-            preloadNotificationSound()
+            // Allow the view to present an alert when the timer completes
+            viewModel.onComplete = {
+                // Present the alert on the main actor
+                Task { @MainActor in
+                    showCompleteAlert = true
+                }
+
+                // Post a user notification if enabled
+                if notificationsEnabled {
+                    postNotification()
+                }
+            }
+
+            // Initialize display to presetDuration
+            durationText = "\(presetDuration)"
+            viewModel.reset()
+            viewModel.start(duration: TimeInterval(presetDuration))
+            viewModel.pause()
         }
         .onDisappear{
-            stopTimer()
-            audioPlayer = nil
+            viewModel.reset()
+        }
+        .alert("计时结束", isPresented: $showCompleteAlert, actions: {
+            Button("确定") { showCompleteAlert = false }
+        }, message: {
+            Text("已完成 \(int2timer(presetDuration))")
+        })
+    }
+
+    // Apply and validate the durationText, syncing to presetDuration and updating the viewModel display.
+    private func applyDurationText() {
+        if let v = Int(durationText), v > 0 {
+            presetDuration = v
+            // Update the viewModel display without starting the timer
+            viewModel.reset()
+            viewModel.start(duration: TimeInterval(v))
+            viewModel.pause()
+        } else {
+            // Revert invalid input
+            durationText = "\(presetDuration)"
         }
     }
 
-    func startTimer() {
-        isRunning = true
-        currentTimer = totalTimer;
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            currentTimer -= 1
-            if currentTimer <= 0 {
-                isRunning = false
-                playNotificationSound()
-                stopTimer()
+    private func requestNotificationPermission() {
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+            if let err = error {
+                print("通知权限请求失败: \(err)")
+            }
+            if !granted {
+                DispatchQueue.main.async {
+                    notificationsEnabled = false
+                }
+            }
+        }
+    }
+
+    private func postNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "计时完成"
+        content.body = "计时 \(int2timer(presetDuration)) 已完成。"
+        content.sound = UNNotificationSound.default
+
+        let req = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(req) { error in
+            if let err = error {
+                print("通知发布失败: \(err)")
             }
         }
     }
@@ -123,53 +255,8 @@ struct TimerView: View {
         let secs = seconds % 60
         return String(format: "%02d:%02d:%02d", hours, minutes, secs)
     }
-    
-    func pauseTimer(){
-        isRunning = false
-        timer?.invalidate()
-        timer = nil
-    }
 
-    func stopTimer() {
-        isRunning = false
-        timer?.invalidate()
-        timer = nil
-        currentTimer = 0
-    }
-    
-    func resetTimer(){
-        isRunning = false
-        timer = nil
-        currentTimer  = totalTimer
-    }
-    
-    // 预加载音效（可选，提升用户体验）
-    private func preloadNotificationSound() {
-       guard let url = Bundle.main.url(forResource: "ding", withExtension: "mp3") else {
-           return
-       }
-       
-       do {
-           audioPlayer = try AVAudioPlayer(contentsOf: url)
-           // 设置为准备好播放状态
-           audioPlayer?.prepareToPlay()
-       } catch {
-           
-       }
-    }
-    
-    // 播放通知音
-    private func playNotificationSound() {
-        guard let player = audioPlayer else {
-            print("音频播放器未初始化")
-            return
-        }
-        // 重置播放位置到开头（确保每次都是从头开始播放）
-        player.currentTime = 0
-        player.play()
-    }
 }
-
 
 #Preview {
     TimerView()

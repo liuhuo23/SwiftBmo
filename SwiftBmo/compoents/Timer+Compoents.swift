@@ -41,34 +41,63 @@ struct TimerView: View {
     var body: some View{
         VStack(spacing: 18){
             CircularProgressView(progress: progress){
-                // Modern timer label: gradient, monospaced digits, rounded background
-                ZStack {
-                    // Soft rounded background card
-#if canImport(UIKit)
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color(UIColor.systemBackground).opacity(0.06))
-                        .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
-#else
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color(NSColor.windowBackgroundColor).opacity(0.06))
-                        .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
-#endif
+                VStack(alignment: .center){
+                    // Status label: placed above the timer with clearer color distinction
+                    
 
-                    // Gradient masked text for a modern look
-                    Text(int2timer(Int(viewModel.remaining)))
-                        .font(.system(size: 44, weight: .black, design: .rounded))
-                        .monospacedDigit()
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 20)
-                        .overlay(
-                            LinearGradient(gradient: Gradient(colors: [Color.green, Color.blue]), startPoint: .topLeading, endPoint: .bottomTrailing)
-                                .mask(
-                                    Text(int2timer(Int(viewModel.remaining)))
-                                        .font(.system(size: 44, weight: .black, design: .rounded))
-                                        .monospacedDigit()
+                    ZStack {
+                        // Soft rounded background card
+    #if canImport(UIKit)
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color(UIColor.systemBackground).opacity(0.06))
+                            .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
+    #else
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color(NSColor.windowBackgroundColor).opacity(0.06))
+                            .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
+    #endif
+                        VStack{
+                            // Gradient masked text for a modern look
+                            Text(int2timer(Int(viewModel.remaining)))
+                                .font(.system(size: 44, weight: .black, design: .rounded))
+                                .monospacedDigit()
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, 20)
+                                .overlay(
+                                    LinearGradient(gradient: Gradient(colors: [Color.green, Color.blue]), startPoint: .topLeading, endPoint: .bottomTrailing)
+                                        .mask(
+                                            Text(int2timer(Int(viewModel.remaining)))
+                                                .font(.system(size: 44, weight: .black, design: .rounded))
+                                                .monospacedDigit()
+                                        )
                                 )
-                        )
-                        .animation(.easeInOut(duration: 0.18), value: viewModel.remaining)
+                                .animation(.easeInOut(duration: 0.18), value: viewModel.remaining)
+                            Group {
+                                if viewModel.state == .running {
+                                    Text("专注中")
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.orange)
+                                        .transition(.opacity.combined(with: .move(edge: .top)))
+                                } else if viewModel.state == .paused {
+                                    Text("休息中")
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.blue)
+                                        .transition(.opacity.combined(with: .move(edge: .top)))
+                                } else {
+                                    // keep an empty spacer when idle/finished to avoid layout jumps
+                                    Text("")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .animation(.easeInOut, value: viewModel.state)
+                        }
+                        
+                       
+                    }
+                    
                 }
             }
 
@@ -126,7 +155,7 @@ struct TimerView: View {
                     Label("通知", systemImage: notificationsEnabled ? "bell.fill" : "bell.slash")
                 }
                 .toggleStyle(.button)
-                .onChange(of: notificationsEnabled) { newVal, _oldVal in
+                .onChange(of: notificationsEnabled) { _oldVal, newVal in
                     if newVal {
                         requestNotificationPermission()
                     }
@@ -259,5 +288,5 @@ struct TimerView: View {
 }
 
 #Preview {
-    TimerView()
+    TimerView().frame(width: 400, height: 600)
 }

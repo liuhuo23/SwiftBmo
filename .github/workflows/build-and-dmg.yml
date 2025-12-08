@@ -105,13 +105,6 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
-      - name: Update app version for tag
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          VERSION=${GITHUB_REF_NAME#v}
-          echo "Setting app version to $VERSION"
-          plutil -replace CFBundleShortVersionString -string "$VERSION" SwiftBmo/Info.plist
-
       - name: Run build_and_dmg script
         id: build_script
         run: |
@@ -119,7 +112,11 @@ jobs:
           # create output dir under build so it can be cached/collected
           mkdir -p build/dist
           # Run the project's build script. Adjust scheme/config as needed.
-          bash scripts/build_and_dmg.sh -s SwiftBmo -c Release -o build/dist --clean
+          VERSION=""
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          bash scripts/build_and_dmg.sh -s SwiftBmo -c Release -o build/dist --version "$VERSION" --clean
 
       - name: List dist contents
         run: |

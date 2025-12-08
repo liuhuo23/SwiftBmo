@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 自动化构建并生成 DMG 的脚本
-# Usage: ./build_and_dmg.sh [-p project] [-s scheme] [-c configuration] [-o output_dir] [--app-name name] [--dry-run] [--clean]
+# Usage: ./build_and_dmg.sh [-p project] [-s scheme] [-c configuration] [-o output_dir] [--app-name name] [--version version] [--dry-run] [--clean]
 # 默认会尝试构建 SwiftBmo/SwiftBmo.xcodeproj 的 SwiftBmo scheme，Release 配置
 
 set -euo pipefail
@@ -38,13 +38,14 @@ OUTPUT_DIR_DEFAULT="$ROOT_DIR/dist"
 DRY_RUN=0
 CLEAN=0
 APP_NAME="SwiftBmo"
+VERSION=""
 
 print_help() {
   cat <<EOF
 $PROG_NAME - 自动构建并生成 macOS 应用的 DMG
 
 用法:
-  $PROG_NAME [-p project] [-s scheme] [-c configuration] [-o output_dir] [--app-name name] [--dry-run] [--clean]
+  $PROG_NAME [-p project] [-s scheme] [-c configuration] [-o output_dir] [--app-name name] [--version version] [--dry-run] [--clean]
 
 选项:
   -p PATH        Xcode project (.xcodeproj) 路径，默认: $PROJECT_DEFAULT
@@ -52,12 +53,13 @@ $PROG_NAME - 自动构建并生成 macOS 应用的 DMG
   -c CONFIG      Build 配置 (Debug/Release)，默认: $CONFIG_DEFAULT
   -o DIR         输出目录，默认: $OUTPUT_DIR_DEFAULT
   --app-name     生成的 .app 名称（不带 .app），默认: $APP_NAME
+  --version      App 版本号 (MARKETING_VERSION)，默认: (from project)
   --dry-run      仅打印将要执行的命令，不实际运行
   --clean        在构建前执行 xcodebuild clean
   -h, --help     显示此帮助并退出
 
 示例:
-  $PROG_NAME -p SwiftBmo/SwiftBmo.xcodeproj -s SwiftBmo -c Release
+  $PROG_NAME -p SwiftBmo/SwiftBmo.xcodeproj -s SwiftBmo -c Release --version 1.0.0
 
 注意:
   - 该脚本依赖 xcodebuild 与 hdiutil。若你使用自动签名/导出，需要在环境中配置签名相关设置。
@@ -78,6 +80,7 @@ while [[ $# -gt 0 ]]; do
     -c) CONFIG="$2"; shift 2;;
     -o) OUTPUT_DIR="$2"; shift 2;;
     --app-name) APP_NAME="$2"; shift 2;;
+    --version) VERSION="$2"; shift 2;;
     --dry-run) DRY_RUN=1; shift 1;;
     --clean) CLEAN=1; shift 1;;
     -h|--help) print_help; exit 0;;
@@ -109,6 +112,9 @@ echo "Scheme: $SCHEME"
 echo "配置: $CONFIG"
 echo "输出: $OUTPUT_DIR"
 echo "App 名称: $APP_NAME"
+if [[ -n "$VERSION" ]]; then
+  echo "版本: $VERSION"
+fi
 
 mkdir -p "$OUTPUT_DIR"
 
@@ -123,7 +129,12 @@ if [[ $CLEAN -eq 1 ]]; then
 fi
 
 # Build
-run_cmd "xcodebuild -project '$PROJECT' -scheme '$SCHEME' -configuration '$CONFIG' -derivedDataPath '$DERIVED_DATA' build"
+BUILD_CMD="xcodebuild -project '$PROJECT' -scheme '$SCHEME' -configuration '$CONFIG' -derivedDataPath '$DERIVED_DATA'"
+if [[ -n "$VERSION" ]]; then
+  BUILD_CMD="$BUILD_CMD MARKETING_VERSION='$VERSION'"
+fi
+BUILD_CMD="$BUILD_CMD build"
+run_cmd "$BUILD_CMD"
 
 if [[ $DRY_RUN -eq 1 ]]; then
   echo "(dry-run) 构建完成，若实际执行，.app 位置: $APP_PATH"
@@ -131,7 +142,7 @@ if [[ $DRY_RUN -eq 1 ]]; then
 fi
 
 if [[ ! -d "$APP_PATH" ]]; then
-  # 有时 Products 路径中 scheme 名称可能不同或是使用 workspace，尝试在 DerivedData/Build/Products 下查找第一个 .app
+  # 有时 Products 路径中 sceme 名称可能不同或是使用 workspace，尝试在 DerivedData/Build/Products 下查找第一个 .app
   echo "未在预期位置找到 .app ($APP_PATH)。尝试在 DerivedData 中搜索 .app..."
   FOUND_APP=$(find "$DERIVED_DATA/Build/Products" -maxdepth 3 -type d -name "*.app" | head -n 1 || true)
   if [[ -z "$FOUND_APP" ]]; then

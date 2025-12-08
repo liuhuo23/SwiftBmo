@@ -1,10 +1,3 @@
-//
-//  Timer+Compoents.swift
-//  SwiftBmo
-//
-//  Created by liuhuo on 2025/12/7.
-//
-
 import SwiftUI
 import AVFoundation
 import UserNotifications
@@ -92,9 +85,9 @@ struct TimerView: View {
                                         .foregroundColor(.secondary)
                                 }
                             }
-                            .animation(.easeInOut, value: viewModel.state)
+                                .animation(.easeInOut, value: viewModel.state)
                         }
-                        
+
                        
                     }
                     

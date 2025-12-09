@@ -230,8 +230,10 @@ final class UpdateManager: ObservableObject {
 
             // Try decoding our own UpdateInfo manifest
             if let info = try? decoder.decode(UpdateInfo.self, from: data) {
-                // Determine app version
+                // Determine app version/build
                 let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+                let appBuildStr = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
+                let appBuild = Int(appBuildStr) ?? 0
 
                 // Respect ignored version
                 if let ignored = userDefaults.string(forKey: kIgnoredVersionKey), ignored == info.id {
@@ -239,7 +241,7 @@ final class UpdateManager: ObservableObject {
                     return
                 }
 
-                if info.isNewer(thanAppVersion: appVersion) {
+                if info.isNewer(thanAppVersion: appVersion, appBuild: appBuild) {
                     state = .available(info)
                 } else {
                     state = .upToDate
@@ -277,6 +279,12 @@ final class UpdateManager: ObservableObject {
                     version.removeFirst()
                 }
 
+                // Infer build number from published_at timestamp if available
+                var build = 0
+                if let pub = gh.published_at, let date = ISO8601DateFormatter().date(from: pub) {
+                    build = Int(date.timeIntervalSince1970)
+                }
+
                 // Choose the most appropriate asset for the current platform by extension
                 func selectAssetURL(from assets: [GHAsset], preferredExtensions: [String]) -> URL? {
                     for ext in preferredExtensions {
@@ -301,19 +309,22 @@ final class UpdateManager: ObservableObject {
                 let assetURL = selectAssetURL(from: gh.assets, preferredExtensions: preferred) ?? gh.assets.first?.browser_download_url ?? gh.html_url ?? url
 
                 let mapped = UpdateInfo(version: version,
+                                         build: build,
                                          url: assetURL,
                                          releaseNotes: gh.body,
                                          mandatory: false,
                                          releaseDate: gh.published_at)
 
                 let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+                let appBuildStr = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
+                let appBuild = Int(appBuildStr) ?? 0
 
                 if let ignored = userDefaults.string(forKey: kIgnoredVersionKey), ignored == mapped.id {
                     state = .upToDate
                     return
                 }
 
-                if mapped.isNewer(thanAppVersion: appVersion) {
+                if mapped.isNewer(thanAppVersion: appVersion, appBuild: appBuild) {
                     state = .available(mapped)
                 } else {
                     state = .upToDate
@@ -419,39 +430,5 @@ final class UpdateManager: ObservableObject {
             try fileManager.removeItem(at: destinationURL)
         }
         try fileManager.copyItem(at: url, to: destinationURL)
-    }
-    
-    func setState(_ newState: State) {
-        state = newState
-    }
-
-    /// Public API: check for updates asynchronously. `manual` bypasses rate limiting.
-    func checkForUpdates(manual: Bool = false, completion: @escaping (Result<Bool, Error>) -> Void) {
-        checkForUpdate(manual: manual)
-        // Since checkForUpdate is async internally, we need to observe the state change
-        // For simplicity, we'll simulate with a delay or observe state
-        // But to make it testable, perhaps add a callback mechanism
-        // For now, let's add a simple implementation
-        Task {
-            // Wait for state to change
-            var attempts = 0
-            while attempts < 100 { // max 10 seconds
-                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1s
-                if state != .checking {
-                    break
-                }
-                attempts += 1
-            }
-            switch state {
-            case .available:
-                completion(.success(true))
-            case .upToDate:
-                completion(.success(false))
-            case .error(let msg):
-                completion(.failure(NSError(domain: "UpdateManager", code: 1, userInfo: [NSLocalizedDescriptionKey: msg])))
-            default:
-                completion(.failure(NSError(domain: "UpdateManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Timeout"])))
-            }
-        }
     }
 }

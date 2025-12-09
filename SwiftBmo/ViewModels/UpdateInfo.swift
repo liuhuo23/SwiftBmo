@@ -6,18 +6,23 @@ import Foundation
 /// Model describing a remote update manifest returned by the update endpoint.
 public struct UpdateInfo: Decodable, Identifiable, Equatable {
     public let version: String
+    public let build: Int
     public let url: URL
     public let releaseNotes: String?
     public let mandatory: Bool
     public let releaseDate: String?
 
-    // Identifiable conformance: unique by version
-    public var id: String { version }
+    // Identifiable conformance: unique by version+build
+    public var id: String { "\(version)-\(build)" }
 
-    // Compare semantic versions. Returns true when `self` represents a newer release
-    // than the provided app version.
-    public func isNewer(thanAppVersion appVersion: String) -> Bool {
-        // Compare semantic version components numerically
+    // Compare semantic versions and build numbers. Returns true when `self` represents a newer release
+    // than the provided app version/build.
+    public func isNewer(thanAppVersion appVersion: String, appBuild: Int) -> Bool {
+        // First compare build numbers
+        if build > appBuild { return true }
+        if build < appBuild { return false }
+
+        // Builds equal: compare semantic version components numerically
         let lhs = version.split(separator: ".").compactMap { Int($0) }
         let rhs = appVersion.split(separator: ".").compactMap { Int($0) }
         let maxLen = max(lhs.count, rhs.count)

@@ -8,6 +8,10 @@ import SwiftUI
 
 struct UpdateView: View {
     @ObservedObject var manager: UpdateManager
+    @Environment(\.dismissWindow) private var dismissWindow
+    @State private var showDownloadErrorAlert = false
+    @State private var showCheckErrorAlert = false
+    @State private var checkErrorMessage = ""
 
     var body: some View {
         VStack(spacing: 16) {
@@ -58,9 +62,6 @@ struct UpdateView: View {
             case .upToDate:
                 Text("当前已是最新版本")
                     .foregroundColor(.secondary)
-            case .error(let msg):
-                Text("检查更新失败：\n\(msg)")
-                    .foregroundColor(.red)
             case .available(let info):
                 VStack(alignment: .leading, spacing: 8) {
                     Text("版本：v\(info.version)")
@@ -94,6 +95,7 @@ struct UpdateView: View {
                         }
                         Spacer()
                         Button("关闭") {
+                            dismissWindow()
                         }
                     }
                 }
@@ -113,16 +115,35 @@ struct UpdateView: View {
                 }
             }
 
-            if let err = manager.downloadError {
-                Text("下载失败：\(err)")
-                    .foregroundColor(.red)
-            }
-
         }
         .padding()
         .frame(minWidth: 400, minHeight: 200)
         .onAppear {
             UpdateManager.shared.checkForUpdate()
+//            manager.setState(.available(UpdateInfo(version: "2.0.0", url: URL(string: "https://example.com")!, releaseNotes: "新版本包含以下更新内容：\n- 新增功能 A\n- 优化功能 B\n- 修复若干已知问题", mandatory: false, releaseDate: nil)))
+//            manager.setState(.error("无法连接到更新服务器"))
+//            showDownloadErrorAlert = false
+        }
+        .alert(isPresented: $showDownloadErrorAlert) {
+            Alert(title: Text("下载失败"),
+                  message: Text(manager.downloadError ?? ""),
+                  dismissButton: .default(Text("确定")))
+        }
+        .alert(isPresented: $showCheckErrorAlert) {
+            Alert(title: Text("检查更新失败"),
+                  message: Text(checkErrorMessage),
+                  dismissButton: .default(Text("确定")))
+        }
+        .onChange(of: manager.downloadError) { newValue, oldValue in
+            if newValue != nil {
+                showDownloadErrorAlert = true
+            }
+        }
+        .onChange(of: manager.state) { newState, oldState in
+            if case .error(let msg) = newState {
+                checkErrorMessage = msg
+                showCheckErrorAlert = true
+            }
         }
     }
 

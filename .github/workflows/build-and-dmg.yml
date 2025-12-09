@@ -118,6 +118,16 @@ jobs:
           fi
           bash scripts/build_and_dmg.sh -s SwiftBmo -c Release -o build/dist --version "$VERSION" --clean
 
+      - name: Generate change.md
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          bash scripts/generate_change_md.sh ${{ github.ref_name }}
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add change.md
+          git commit -m "Update change.md for ${{ github.ref_name }} [skip ci]" || echo "No changes to commit"
+          git push
+
       - name: List dist contents
         run: |
           echo "Dist contents:"

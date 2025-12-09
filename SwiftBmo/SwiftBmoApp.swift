@@ -167,7 +167,7 @@ struct SwiftBmoApp: App {
                 .windowResizeBehavior(.disabled)
                 .windowMinimizeBehavior(.disabled)
         }
-        .defaultSize(width: 500, height: 600)
+        .defaultSize(width: 400, height: 300)
         .defaultPosition(.center)
         
         WindowGroup("关于", id: "about"){

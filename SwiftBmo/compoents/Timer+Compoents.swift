@@ -1,6 +1,7 @@
 import SwiftUI
 import AVFoundation
 import UserNotifications
+import CoreData
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -9,9 +10,16 @@ import AppKit
 #endif
 
 struct TimerView: View {
+    @Environment(\.managedObjectContext) private var viewContext
+    
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \Subject.name, ascending: true)],
+        animation: .default)
+    private var subjects: FetchedResults<Subject>
+    
     // Use the view model to hold timer/audio logic
-    @StateObject private var viewModel = TimerViewModel()
-
+    @StateObject private var viewModel = TimerViewModel(context: PersistenceController.shared.container.viewContext)
+    
     // Local preset duration (seconds) to mirror the previous `totalTimer` behavior
     @State private var presetDuration: Int = 60
 
@@ -57,8 +65,6 @@ struct TimerView: View {
                             Text(int2timer(Int(viewModel.remaining)))
                                 .font(.system(size: 44, weight: .black, design: .rounded))
                                 .monospacedDigit()
-                                .padding(.vertical, 10)
-                                .padding(.horizontal, 20)
                                 .overlay(
                                     LinearGradient(gradient: Gradient(colors: [Color.green, Color.blue]), startPoint: .topLeading, endPoint: .bottomTrailing)
                                         .mask(
@@ -139,7 +145,16 @@ struct TimerView: View {
                 }
                 .labelsHidden()
             }
-
+            
+            // 添加主题设置
+            HStack(spacing: 8){
+                Picker("选择主题", selection: $viewModel.selectSubject) {
+                    ForEach(subjects, id: \.self) { theme in
+                        Text(theme.name ?? "Unknown").tag(theme)
+                    }
+                }
+            }
+            
             // Sound + notification toggles row
             HStack(spacing: 12) {
                 Toggle(isOn: $viewModel.soundEnabled) {
@@ -202,6 +217,8 @@ struct TimerView: View {
         }
         .padding()
         .onAppear{
+            viewModel.setContext(viewContext)
+
             // Allow the view to present an alert when the timer completes
             viewModel.onComplete = {
                 // Present the alert on the main actor
@@ -295,5 +312,5 @@ struct TimerView: View {
 }
 
 #Preview {
-    TimerView().frame(width: 400, height: 600)
+    TimerView().frame(width: 600, height: 600)
 }

@@ -24,4 +24,5 @@ extension Tasks {
         let seconds = totalSeconds % 60
         return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
+
 }

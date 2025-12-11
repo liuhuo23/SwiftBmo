@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 import AVFoundation
+import CoreData
 #if canImport(AppKit)
 import AppKit
 #endif
@@ -30,6 +31,12 @@ final class TimerViewModel: ObservableObject {
     // Allow UI to control whether sound should play on completion
     @Published var soundEnabled: Bool = true
 
+    // Theme selection
+    @Published var selectSubject: Subject? = nil
+
+    // Subject name for database
+    @Published var subjectName: String? = nil
+
     // An optional callback the view can set to react to completion (play sound, send notification)
     var onComplete: (() -> Void)?
 
@@ -49,9 +56,17 @@ final class TimerViewModel: ObservableObject {
     // Optional audio player (lazy) for completion sound
     private lazy var audioPlayer: AVAudioPlayer? = makeAudioPlayer()
 
+    // Database context
+    private var context: NSManagedObjectContext
+
     // MARK: - Init
-    init(tickInterval: TimeInterval = 0.25) {
+    init(context: NSManagedObjectContext, tickInterval: TimeInterval = 0.25) {
+        self.context = context
         self.tickInterval = tickInterval
+    }
+
+    func setContext(_ context: NSManagedObjectContext) {
+        self.context = context
     }
 
     deinit {
@@ -167,6 +182,9 @@ final class TimerViewModel: ObservableObject {
             // Fire completion callback on main actor
             onComplete?()
 
+            // Save to database
+            saveCompletedTask()
+
             // Play sound if available and enabled
             if soundEnabled {
                 audioPlayer?.play()
@@ -192,6 +210,30 @@ final class TimerViewModel: ObservableObject {
             return player
         } catch {
             return nil
+        }
+    }
+
+    // MARK: - Database
+
+    private func saveCompletedTask() {
+        guard let selectSubject = selectSubject else { return }
+//        let subject = getOrCreateSubject(name: subjectName, context: self.context)
+        _ = Tasks(subject: selectSubject, total_time: Int64(totalDuration), finished_at: Date(), context: context)
+        do {
+            print("开始保存")
+            try context.save()
+        } catch {
+            print("Failed to save task: \(error)")
+        }
+    }
+
+    private func getOrCreateSubject(name: String, context: NSManagedObjectContext) -> Subject {
+        let request = Subject.fetchRequest()
+        request.predicate = NSPredicate(format: "name == %@", name)
+        if let existing = try? context.fetch(request).first {
+            return existing
+        } else {
+            return Subject(name: name, context: context)
         }
     }
 }

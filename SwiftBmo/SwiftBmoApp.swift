@@ -159,6 +159,14 @@ struct SwiftBmoApp: App {
                     Label("关于 SwiftBmo", systemImage: "info.circle")
                 }
             }
+            CommandGroup(replacing: .appSettings) {
+                Button(action:{
+                    openWindow(id: "settings")
+                }){
+                    Label("设置", systemImage: "gearshape")
+                }
+                .keyboardShortcut(",", modifiers: [.command])
+            }
                 
         }
         
@@ -178,5 +186,18 @@ struct SwiftBmoApp: App {
         .defaultSize(width: 400, height: 250)
         .windowResizability(.contentMinSize)
         .defaultPosition(.center)
+        
+        WindowGroup("设置", id: "settings") {
+            SettingView()
+                .environment(\.managedObjectContext, persistenceController.container.viewContext)
+                .windowResizeBehavior(.disabled)
+                .windowMinimizeBehavior(.disabled)
+        }
+        .defaultSize(width: 600, height: 300)
+        .defaultPosition(.center)
+        
+//        Settings {
+//            SettingView()
+//        }
     }
 }

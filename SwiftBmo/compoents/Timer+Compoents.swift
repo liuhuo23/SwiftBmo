@@ -24,6 +24,9 @@ struct TimerView: View {
     // Toggle for system notifications
     @State private var notificationsEnabled: Bool = false
 
+    // Show notification permission error alert
+    @State private var showNotificationErrorAlert: Bool = false
+
     var progress: Double {
         viewModel.progress
     }
@@ -205,7 +208,7 @@ struct TimerView: View {
                 Task { @MainActor in
                     showCompleteAlert = true
                 }
-
+                
                 // Post a user notification if enabled
                 if notificationsEnabled {
                     postNotification()
@@ -226,6 +229,15 @@ struct TimerView: View {
         }, message: {
             Text("已完成 \(int2timer(presetDuration))")
         })
+        .alert("通知权限被拒绝", isPresented: $showNotificationErrorAlert, actions: {
+            Button("确定") { showNotificationErrorAlert = false }
+        }, message: {
+#if canImport(UIKit)
+            Text("请在设置 > 通知中启用通知权限，以便应用可以发送通知。")
+#else
+            Text("请在系统偏好设置 > 通知中启用通知权限，以便应用可以发送通知。")
+#endif
+        })
     }
 
     // Apply and validate the durationText, syncing to presetDuration and updating the viewModel display.
@@ -245,12 +257,14 @@ struct TimerView: View {
     private func requestNotificationPermission() {
         let center = UNUserNotificationCenter.current()
         center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-            if let err = error {
-                print("通知权限请求失败: \(err)")
-            }
-            if !granted {
-                DispatchQueue.main.async {
+            DispatchQueue.main.async {
+                if let err = error {
+                    print("通知权限请求失败: \(err)")
                     notificationsEnabled = false
+                    showNotificationErrorAlert = true
+                } else if !granted {
+                    notificationsEnabled = false
+                    showNotificationErrorAlert = true
                 }
             }
         }

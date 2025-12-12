@@ -35,96 +35,33 @@ struct TimerView: View {
     // Show notification permission error alert
     @State private var showNotificationErrorAlert: Bool = false
 
+    // Sheet for adding a new subject
+    @State private var showingAddSubjectSheet: Bool = false
+    @State private var newSubjectName: String = ""
+    @State private var showSelectSubject:Bool = false
+    // Focus state for the new subject text field — used so the Character Viewer inserts into the field
+    @FocusState private var newSubjectNameFocused: Bool
+
     var progress: Double {
         viewModel.progress
     }
 
     // Common presets the user can tap quickly
-    private let presets: [Int] = [30, 60, 120, 300]
+    @StateObject private var appInfo = AppInfo.shared
+    private var presets: [Int] { appInfo.presets }
 
-    var body: some View{
-        VStack(spacing: 18){
+    var body: some View {
+        VStack(spacing: 10){
+            HStack(spacing: 8) {
+                Picker("选择主题", selection: $viewModel.selectSubject) {
+                    ForEach(subjects, id: \.self) { theme in
+                        Text(theme.name ?? "默认主题").tag(theme as Subject?)
+                    }
+                }
+            }
             CircularProgressView(progress: progress){
-                VStack(alignment: .center){
-                    // Status label: placed above the timer with clearer color distinction
-                    
-
-                    ZStack {
-                        // Soft rounded background card
-    #if canImport(UIKit)
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color(UIColor.systemBackground).opacity(0.06))
-                            .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
-    #else
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color(NSColor.windowBackgroundColor).opacity(0.06))
-                            .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
-    #endif
-                        VStack{
-                            // Gradient masked text for a modern look
-                            Text(int2timer(Int(viewModel.remaining)))
-                                .font(.system(size: 44, weight: .black, design: .rounded))
-                                .monospacedDigit()
-                                .overlay(
-                                    LinearGradient(gradient: Gradient(colors: [Color.green, Color.blue]), startPoint: .topLeading, endPoint: .bottomTrailing)
-                                        .mask(
-                                            Text(int2timer(Int(viewModel.remaining)))
-                                                .font(.system(size: 44, weight: .black, design: .rounded))
-                                                .monospacedDigit()
-                                        )
-                                )
-                                .animation(.easeInOut(duration: 0.18), value: viewModel.remaining)
-                            Group {
-                                if viewModel.state == .running {
-                                    Text("专注中")
-                                        .font(.subheadline)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.orange)
-                                        .transition(.opacity.combined(with: .move(edge: .top)))
-                                } else if viewModel.state == .paused {
-                                    Text("休息中")
-                                        .font(.subheadline)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.blue)
-                                        .transition(.opacity.combined(with: .move(edge: .top)))
-                                } else {
-                                    // keep an empty spacer when idle/finished to avoid layout jumps
-                                    Text("")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                                .animation(.easeInOut, value: viewModel.state)
-                        }
-
-                       
-                    }
-                    
-                }
+                centerCard
             }
-
-            // Preset selection row
-            HStack(spacing: 12) {
-                ForEach(presets, id: \.self) { val in
-                    Button {
-                        presetDuration = val
-                        durationText = "\(val)"
-                        // Show the selected preset immediately in UI by starting then pausing
-                        viewModel.reset()
-                        viewModel.start(duration: TimeInterval(val))
-                        viewModel.pause()
-                    } label: {
-                        Text("\(val)s")
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 12)
-                            .background(RoundedRectangle(cornerRadius: 10).fill(presetDuration == val ? Color.accentColor : Color.gray.opacity(0.16)))
-                            .foregroundColor(presetDuration == val ? Color.white : Color.primary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-            }
-
             // Manual duration input (seconds) with a small stepper
             HStack(spacing: 8) {
                 Text("自定义秒数:")
@@ -146,33 +83,6 @@ struct TimerView: View {
                 .labelsHidden()
             }
             
-            // 添加主题设置
-            HStack(spacing: 8){
-                Picker("选择主题", selection: $viewModel.selectSubject) {
-                    ForEach(subjects, id: \.self) { theme in
-                        Text(theme.name ?? "Unknown").tag(theme)
-                    }
-                }
-            }
-            
-            // Sound + notification toggles row
-            HStack(spacing: 12) {
-                Toggle(isOn: $viewModel.soundEnabled) {
-                    Label("声音", systemImage: viewModel.soundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
-                }
-                .toggleStyle(.button)
-
-                Toggle(isOn: $notificationsEnabled) {
-                    Label("通知", systemImage: notificationsEnabled ? "bell.fill" : "bell.slash")
-                }
-                .toggleStyle(.button)
-                .onChange(of: notificationsEnabled) { _oldVal, newVal in
-                    if newVal {
-                        requestNotificationPermission()
-                    }
-                }
-            }
-
             HStack{
                 HStack(spacing: 20) {
                     // Start / Pause icon button
@@ -181,10 +91,10 @@ struct TimerView: View {
                         case .running:
                             viewModel.pause()
                         case .paused:
-                            viewModel.resume()
+                            resume()
                         default:
-                            // idle or finished -> start with presetDuration
-                            viewModel.start(duration: TimeInterval(presetDuration))
+                            start()
+                            
                         }
                     } label: {
                         Image(systemName: viewModel.state == .running ? "pause.fill" : "play.fill")
@@ -195,6 +105,32 @@ struct TimerView: View {
                     }
                     .accessibilityLabel(viewModel.state == .running ? "暂停" : "开始")
                     .buttonStyle(PlainButtonStyle())
+                    // 秒数
+                    // Preset selection row
+                    // Preset selection row — horizontally scrollable for many presets
+                    ScrollView(.horizontal, showsIndicators: true) {
+                        HStack(spacing: 12) {
+                            ForEach(presets, id: \.self) { val in
+                                Button {
+                                    presetDuration = val
+                                    durationText = "\(val)"
+                                    // Show the selected preset immediately in UI by starting then pausing
+                                    viewModel.reset()
+                                    viewModel.start(duration: TimeInterval(val))
+                                    viewModel.pause()
+                                } label: {
+                                    Text("\(val)s")
+                                        .font(.subheadline.weight(.semibold))
+                                        .padding(.vertical, 8)
+                                        .padding(.horizontal, 12)
+                                        .background(RoundedRectangle(cornerRadius: 10).fill(presetDuration == val ? Color.accentColor : Color.gray.opacity(0.16)))
+                                        .foregroundColor(presetDuration == val ? Color.white : Color.primary)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                    }
 
                     // Reset icon button
                     Button {
@@ -215,9 +151,130 @@ struct TimerView: View {
                 }
              }
         }
+        .toolbar(){
+            // Replace the Picker with a Menu so toolbar shows a compact, reliable selection UI.
+            ToolbarItem(placement: .automatic){
+                Menu {
+                    if subjects.isEmpty {
+                        Button("添加主题") {
+                            // Open sheet to allow user to enter a name for the new subject
+                            newSubjectName = ""
+                            showingAddSubjectSheet = true
+                        }
+                    } else {
+                        ForEach(subjects, id: \.self) { theme in
+                            Button {
+                                viewModel.selectSubject = theme
+                            } label: {
+                                HStack {
+                                    Text(theme.name ?? "Unknown")
+                                    Spacer()
+                                    if viewModel.selectSubject?.objectID == theme.objectID {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                        Divider()
+                        Button("添加主题") {
+                            newSubjectName = ""
+                            showingAddSubjectSheet = true
+                        }
+                    }
+                } label: {
+                    Label(viewModel.selectSubject?.name ?? "选择主题", systemImage: "tag")
+                }
+            }
+
+            ToolbarItemGroup(placement: .automatic){
+                Toggle(isOn: $viewModel.soundEnabled) {
+                    Label("声音", systemImage: viewModel.soundEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                }
+                .toggleStyle(.button)
+                
+                Toggle(isOn: $notificationsEnabled) {
+                    Label("通知", systemImage: notificationsEnabled ? "bell.fill" : "bell.slash")
+                }
+                .toggleStyle(.button)
+                .onChange(of: notificationsEnabled) { newVal, _ in
+                    if newVal {
+                        requestNotificationPermission()
+                    }
+                }
+            }
+        }
         .padding()
+        // Sheet for entering a new subject name
+        .sheet(isPresented: $showingAddSubjectSheet) {
+            VStack(spacing: 16) {
+                Text("添加主题")
+                    .font(.headline)
+                // Arrange the text field and an emoji/character picker button on the same row.
+                HStack(spacing: 8) {
+                    TextField("主题名称", text: $newSubjectName)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding(.horizontal)
+                        .focused($newSubjectNameFocused)
+
+                    // macOS: open the Character Viewer so users can insert emoji/symbols directly into the text field.
+                    #if canImport(AppKit)
+                    Button {
+                        openCharacterPalette()
+                    } label: {
+                        Image(systemName: "face.smiling")
+                            .font(.title2)
+                    }
+                    .buttonStyle(BorderlessButtonStyle())
+                    .help("打开表情和符号面板")
+                    #endif
+                }
+
+                HStack {
+                    Button("取消") {
+                        showingAddSubjectSheet = false
+                        newSubjectName = ""
+                    }
+                    .keyboardShortcut(.cancelAction)
+
+                    Spacer()
+
+                    Button("保存") {
+                        let name = newSubjectName.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !name.isEmpty else { return }
+                        let newSubject = Subject(name: name, context: viewContext)
+                        do {
+                            try viewContext.save()
+                            viewModel.selectSubject = newSubject
+                        } catch {
+                            print("Failed to create subject: \(error)")
+                        }
+                        showingAddSubjectSheet = false
+                        newSubjectName = ""
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+                .padding(.horizontal)
+            }
+            .padding()
+            .frame(minWidth: 300)
+        }
+        
+        // Helper to present the system character/emoji picker. On macOS this calls AppKit's API.
+        .onChange(of: showingAddSubjectSheet) { showing,_ in
+            // When sheet appears, focus the text field so emoji insertion lands there immediately.
+            if showing {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+                    newSubjectNameFocused = true
+                }
+            }
+        }
         .onAppear{
             viewModel.setContext(viewContext)
+
+            // If no subject is selected yet, default to the first available subject
+            if viewModel.selectSubject == nil, let first = subjects.first {
+                viewModel.selectSubject = first
+            }
 
             // Allow the view to present an alert when the timer completes
             viewModel.onComplete = {
@@ -238,6 +295,12 @@ struct TimerView: View {
             viewModel.start(duration: TimeInterval(presetDuration))
             viewModel.pause()
         }
+        // If subjects list changes (new subject added), ensure a default selection exists
+        .onChange(of: subjects.count) { _, _ in
+            if viewModel.selectSubject == nil, let first = subjects.first {
+                viewModel.selectSubject = first
+            }
+        }
         .onDisappear{
             viewModel.reset()
         }
@@ -245,6 +308,11 @@ struct TimerView: View {
             Button("确定") { showCompleteAlert = false }
         }, message: {
             Text("已完成 \(int2timer(presetDuration))")
+        })
+        .alert("警告", isPresented: $showSelectSubject, actions: {
+            Button("确定") { showSelectSubject = false }
+        }, message: {
+            Text("主题未选择")
         })
         .alert("通知权限被拒绝", isPresented: $showNotificationErrorAlert, actions: {
             Button("确定") { showNotificationErrorAlert = false }
@@ -269,6 +337,33 @@ struct TimerView: View {
             // Revert invalid input
             durationText = "\(presetDuration)"
         }
+    }
+    
+    private func resume(){
+        guard let subject = viewModel.selectSubject else {
+            showSelectSubject = true
+            return
+        }
+        viewModel.resume()
+    }
+    
+    private func start(){
+        // idle or finished -> start with presetDuration
+        guard let subject = viewModel.selectSubject else {
+            showSelectSubject = true
+            return
+        }
+        viewModel.start(duration: TimeInterval(presetDuration))
+    }
+    // macOS-only: open the system Character/Emoji viewer and ensure the subject text field is first responder
+    private func openCharacterPalette() {
+        #if canImport(AppKit)
+        // Focus the text field first so the character viewer inserts into it
+        newSubjectNameFocused = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            NSApp.orderFrontCharacterPalette(nil)
+        }
+        #endif
     }
 
     private func requestNotificationPermission() {
@@ -309,6 +404,57 @@ struct TimerView: View {
         return String(format: "%02d:%02d:%02d", hours, minutes, secs)
     }
 
+    // Extracted center card to reduce complexity in the main body for the compiler.
+    private var centerCard: some View {
+        VStack(alignment: .center) {
+            ZStack {
+    #if canImport(UIKit)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color(UIColor.systemBackground).opacity(0.06))
+                    .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
+    #else
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color(NSColor.windowBackgroundColor).opacity(0.06))
+                    .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
+    #endif
+                VStack(spacing: 8){
+                    Text(int2timer(Int(viewModel.remaining)))
+                        .font(.system(size: 44, weight: .black, design: .rounded))
+                        .monospacedDigit()
+                        .overlay(
+                            LinearGradient(gradient: Gradient(colors: [Color.green, Color.blue]), startPoint: .topLeading, endPoint: .bottomTrailing)
+                                .mask(
+                                    Text(int2timer(Int(viewModel.remaining)))
+                                        .font(.system(size: 44, weight: .black, design: .rounded))
+                                        .monospacedDigit()
+                                )
+                        )
+                        .animation(.easeInOut(duration: 0.18), value: viewModel.remaining)
+
+                    Group {
+                        if viewModel.state == .running {
+                            Text("专注中")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.orange)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                        } else if viewModel.state == .paused {
+                            Text("休息中")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.blue)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                        } else {
+                            Text("")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .animation(.easeInOut, value: viewModel.state)
+                }
+            }
+        }
+    }
 }
 
 #Preview {

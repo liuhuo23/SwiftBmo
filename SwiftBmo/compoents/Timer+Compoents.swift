@@ -11,7 +11,7 @@ import AppKit
 
 struct TimerView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    
+    @Environment(\.openWindow) private var openWindow
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \Subject.name, ascending: true)],
         animation: .default)
@@ -152,6 +152,13 @@ struct TimerView: View {
              }
         }
         .toolbar(){
+            ToolbarItem(placement: .automatic){
+                Button {
+                    openWindow(id: "chart")
+                } label: {
+                    Label("统计", systemImage: "chart.bar.fill")
+                }
+            }
             // Replace the Picker with a Menu so toolbar shows a compact, reliable selection UI.
             ToolbarItem(placement: .automatic){
                 Menu {
@@ -340,7 +347,7 @@ struct TimerView: View {
     }
     
     private func resume(){
-        guard let subject = viewModel.selectSubject else {
+        guard let _ = viewModel.selectSubject else {
             showSelectSubject = true
             return
         }
@@ -349,7 +356,7 @@ struct TimerView: View {
     
     private func start(){
         // idle or finished -> start with presetDuration
-        guard let subject = viewModel.selectSubject else {
+        guard let _ = viewModel.selectSubject else {
             showSelectSubject = true
             return
         }

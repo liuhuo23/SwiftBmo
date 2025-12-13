@@ -10,3 +10,5 @@ build/
 dist/
 secrets-out/
 **/*.p12
+buildServer.json
+.vscode/

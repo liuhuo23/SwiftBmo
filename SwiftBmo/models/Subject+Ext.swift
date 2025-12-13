@@ -17,4 +17,8 @@ extension Subject{
     var totalTime: Int64 {
         (self.tasks?.allObjects as? [Tasks])?.reduce(into: Int64(0)) { $0 += $1.total_time } ?? 0
     }
+
+    var taskCound: Int {
+        self.tasks?.count ?? 0
+    }
 }

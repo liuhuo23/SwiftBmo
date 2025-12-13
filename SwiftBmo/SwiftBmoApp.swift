@@ -196,8 +196,11 @@ struct SwiftBmoApp: App {
         .defaultSize(width: 600, height: 300)
         .defaultPosition(.center)
         
-//        Settings {
-//            SettingView()
-//        }
+        WindowGroup("图表", id: "chart") {
+            ChartView()
+                .environment(\.managedObjectContext, persistenceController.container.viewContext)
+        }
+        .defaultSize(width: 800, height: 600)
+        .defaultPosition(.center)
     }
 }
